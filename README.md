@@ -1,8 +1,8 @@
-<br />
+<br /><br />
 <p align="center">
-  <img width="220" src="assets/icon.png" />
+  <img width="230" src="assets/icon.png" />
 </p>
-<br />
+<br /><br />
 
 # grafana-cluster
 > Scalable Grafana cluster using AWS Fargate.
