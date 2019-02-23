@@ -1,0 +1,27 @@
+{
+  "name": "@aws-blocks/grafana-cluster",
+  "version": "1.0.0",
+  "description": "Scalable Grafana cluster using AWS Fargate as a CloudFormation stack.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HQarroum/grafana-cluster.git"
+  },
+  "keywords": [
+    "grafana",
+    "cloudformation",
+    "fargate"
+  ],
+  "author": "Halim Qarroum <hqm.post@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/HQarroum/grafana-cluster/issues"
+  },
+  "homepage": "https://github.com/HQarroum/grafana-cluster#readme",
+  "dependencies": {
+    "@aws-blocks/aurora-cluster": "^1.0.0"
+  }
+}
