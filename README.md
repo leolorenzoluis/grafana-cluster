@@ -1,8 +1,8 @@
-<br />
+<br /><br />
 <p align="center">
-  <img width="220" src="assets/icon.png" />
+  <img width="230" src="assets/icon.png" />
 </p>
-<br />
+<br /><br />
 
 # grafana-cluster
 > Scalable Grafana cluster using AWS Fargate.
@@ -19,12 +19,20 @@ Lead Maintainer: [Halim Qarroum](mailto:hqm.post@gmail.com)
 
  - [Features](#features)
  - [Description](#description)
- - [Pre-requisites](#pre-requisites)
  - [Deployment](#deployment)
  - [See also](#see-also)
  
-# Features
+## Features
 
  - Serverless, scalable deployment of a Grafana cluster on AWS.
- - Auto-managed load balancer and alerting mechanism.
- - 
+ - Load balancer and alerting mechanisms built-in.
+ - Provision Grafana properties and plugins from the stack parameters.
+ - Non-intrusive and can be seamlessly integrated into your own architecture.
+
+## Description
+
+This repository features a CloudFormation stack which creates a scalable Grafana cluster using Docker containers on AWS Fargate. You can either deploy it as a standalone stack using the AWS console or the AWS CLI, or integrate it as a sub-stack as part of your own deployment.
+
+## Deployment
+
+## See also
