@@ -76,7 +76,7 @@ Metadata:
           - LoadBalancerAlarmEvaluationPeriods
           - LoadBalancerAlarmEvaluationPeriodSeconds
           - LoadBalancerLatencySeconds
-  
+
     # Labels for the above parameters.
     ParameterLabels:
       Environment:
