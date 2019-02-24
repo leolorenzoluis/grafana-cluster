@@ -47,6 +47,28 @@ This repository features a CloudFormation stack which creates a scalable Grafana
 
 ## Deployment
 
+1. Start by installing this stack locally using `npm`.
+
+2. Head to the `node_modules/@aws-blocks/grafana-cluster` in your shell and package the stack using the `aws-cli` so that the sub-stacks are bundled with the cloudformation template provided in this repository.
+
+```bash
+aws cloudformation package --s3-bucket <an-s3-bucket-you-own> --template-file cloudformation.yml --output-template-file cfn.package.yml
+```
+
+3. Once the stack is packaged, you can open the AWS Cloudformation console in your browser and select the **Create Stack** button. Select then the **Upload a template to S3** option and upload the **cfn.package.yml.yml** file that has been created.
+
+4. At this point you can go to your [AWS CloudFormation Console](https://console.aws.amazon.com/cloudformation/home) in your AWS account and deploy the `cfn.package.yml` file.
+
+5. Configure the parameters to match your deployment requirements in the CloudFormation console when deploying your project. More information are available on the parameters made available by this stack in the below section.
+
+<br />
+<p align="center">
+  <img src="assets/parameters.png" />
+</p>
+<br />
+
+6. Once your stack parameters are set click **Next** and **Next** again. On the last page, make sure that you select the **I acknowledge that AWS CloudFormation might create IAM resources.** and the **I acknowledge that AWS CloudFormation might require the following capability: CAPABILITY_AUTO_EXPAND** options before deploying, and once it is selected you can continue with deploying the stack.
+
 <br />
 <p align="center">
   <img src="assets/grafana-dashboard.png" />
