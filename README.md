@@ -99,7 +99,9 @@ Parameter | Description | Type | Default |
 **AutomaticFailoverEnabled** | (Redis only) - Indicates whether Multi-AZ is enabled. When Multi-AZ is enabled, a read-only replica is automatically promoted to a read-write primary cluster if the existing primary cluster fails. | Boolean | true
 **NumNodeGroups** | (Redis only) - The number of node groups (shards) for this Redis replication group. | Number | 1
 **ReplicasPerNodeGroup** | (Redis only) - The number of replica nodes in each node group (shard). | Number | 2
-**AtRestEncryptionEnabled** | (Redis only) - Indicates whether to enable encryption at rest on the ElastiCache cluster. | **TransitEncryptionEnabled** | (Redis only) - Indicates whether to enable in-transit encryption on the ElastiCache cluster. | **RedisCloudWatchDashboard** | (Redis only) - Whether to create a Cloudwatch monitoring dashboard associated with the created ElastiCache cluster. | Boolean | false
+**AtRestEncryptionEnabled** | (Redis only) - Indicates whether to enable encryption at rest on the ElastiCache cluster. | Boolean | false
+**TransitEncryptionEnabled** | (Redis only) - Indicates whether to enable in-transit encryption on the ElastiCache cluster. | Boolean | false
+**RedisCloudWatchDashboard** | (Redis only) - Whether to create a Cloudwatch monitoring dashboard associated with the created ElastiCache cluster. | Boolean | false
 **PublicSubnets** | The list of public subnets to associate with the internet facing load balancer, specify at least 2 public subnets. | List of `AWS::EC2::Subnet::Id` | 
 **PrivateSubnets** | The list of private subnets to associate with the Grafana container deployments, specify at least 2 private subnets. | List of `AWS::EC2::Subnet::Id` |
 **VpcId** | The VPC identifier to deploy the Grafana application in. | AWS::EC2::VPC::Id |
