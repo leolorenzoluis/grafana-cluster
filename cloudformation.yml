@@ -33,8 +33,6 @@ Metadata:
           - PrivateSubnets
           - VpcId
           - SSLCertificateArn
-          - HostedZoneName
-          - LoadBalancerDomainName
 
       # Aurora Storage parameters label.
       - Label:
@@ -49,6 +47,7 @@ Metadata:
           - DatabaseName
           - PreferredBackupWindow
           - PreferredMaintenanceWindow
+          - CloudWatchDashboard
 
       # Session Storage parameters label.
       - Label:
@@ -62,6 +61,7 @@ Metadata:
           - AutomaticFailoverEnabled
           - AtRestEncryptionEnabled
           - TransitEncryptionEnabled
+          - RedisCloudWatchDashboard
 
       # Cluster parameters label.
       - Label:
@@ -94,10 +94,6 @@ Metadata:
         default: VPC to deploy the stack in
       SSLCertificateArn:
         default: SSL certificate ARN
-      HostedZoneName:
-        default: Hosted Zone Name 
-      LoadBalancerDomainName:
-        default: Application domain name
       DatabaseUser:
         default: Database username
       DatabasePassword:
@@ -116,6 +112,8 @@ Metadata:
         default: Database backup window
       PreferredMaintenanceWindow:
         default: Database maintenance window
+      CloudWatchDashboard:
+        default: Enable Grafana Cloudwatch integration
       SessionStorageType:
         default: Session storage type
       CacheNodeType:
@@ -132,6 +130,8 @@ Metadata:
         default: Enable at rest encryption
       TransitEncryptionEnabled:
         default: Enable transit encryption
+      RedisCloudWatchDashboard:
+        default: Enable CloudWatch dashboard
 
 
 # Parameters exposed by this template.
@@ -209,6 +209,13 @@ Parameters:
     Default: mon:03:00-mon:04:00
     Description: The weekly time range (in UTC) during which system maintenance can occur.
     MinLength: 5
+  CloudWatchDashboard:
+    Type: String
+    Description: Whether to create a Cloudwatch monitoring dashboard associated with the created Grafana cluster.
+    Default: false
+    AllowedValues:
+      - true
+      - false
 
   # Cache storage parameters.
   SessionStorageType:
@@ -292,6 +299,13 @@ Parameters:
     AllowedValues:
       - true
       - false
+  RedisCloudWatchDashboard:
+    Type: String
+    Description: (Redis only) - Whether to create a Cloudwatch monitoring dashboard associated with the created ElastiCache cluster.
+    Default: true
+    AllowedValues:
+      - true
+      - false
 
   # Network and security parameters.
   PublicSubnets:
@@ -307,18 +321,6 @@ Parameters:
     Description: The VPC identifier to deploy the Grafana application in.
     MinLength: 1
     ConstraintDescription: Must be a valid VPC identifier.
-  HostedZoneName:
-    Type: String
-    Description: (Optiona) - The Amazon Route 53 Hosted Zone Name for the optional load balancer alias record (do not include the period at the end of the zone name).
-    Default: ""
-    AllowedPattern: "(^$|^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}$)"
-    ConstraintDescription: Please enter a valid Route 53 Hosted Zone Name without the dot at the end of the zone name.
-  LoadBalancerDomainName:
-    Type: String
-    Description: (Optional) - A domain name to associate with an Amazon Route 53 alias record pointing to the load balancer DNS name.
-    Default: ""
-    AllowedPattern: "(^$|^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\\.)+[A-Za-z]{2,6}$)"
-    ConstraintDescription: Please enter a valid domain name
   SSLCertificateArn:
     Type: String
     Description: (Optional) - An ARN associated with a TLS certificate to use from Amazon Certificate Manager (ACM). If provided, access to the Grafana cluster will be available through the HTTPS port (443) through the internet facing load balancer, if not provided, access to the Grafana will be over HTTP (80).
@@ -402,15 +404,11 @@ Parameters:
     MinValue: 1
     ConstraintDescription: Must be at least one second.
 
-
 # Conditions declared in this template.
 Conditions:
   TlsEnabled: !Not [ !Equals [ !Ref SSLCertificateArn, "" ]]
-  UseRedisStorage: !Equals [ !Ref SessionStorageType, redis]
-  CreateRoute53Record: !And
-    - !Not [ !Equals [ !Ref LoadBalancerDomainName, "" ]]
-    - !Not [ !Equals [ !Ref HostedZoneName, "" ]]
-
+  UseRedisStorage: !Equals [ !Ref SessionStorageType, redis ]
+  CreateCloudWatchDashboard: !Equals [ !Ref CloudWatchDashboard, true ]
 
 # Description of the resources to be created.
 Resources:
@@ -448,7 +446,7 @@ Resources:
         VpcId: !Ref VpcId
         SourceSecurityGroupId: !GetAtt GrafanaSecurityGroup.GroupId
         ClusterSubnets: !Join [",", !Ref ClusterSubnets]
-        CloudWatchDashboard: true
+        CloudWatchDashboard: !Ref RedisCloudWatchDashboard
         CacheNodeType: !Ref CacheNodeType
         NumNodeGroups: !Ref NumNodeGroups
         ReplicasPerNodeGroup: !Ref ReplicasPerNodeGroup
@@ -571,18 +569,6 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-  # An optional Route53 record to associate with the load-balancer.
-  AlbRoute53Record:
-    Type: AWS::Route53::RecordSet
-    Condition: CreateRoute53Record
-    Properties:
-      Name: !Ref LoadBalancerDomainName
-      HostedZoneName: !Sub ${HostedZoneName}.
-      Type: A
-      AliasTarget:
-        HostedZoneId: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
-        DNSName: !GetAtt ApplicationLoadBalancer.DNSName
-
   # The namespace of the Fargate Cluster in Amazon CloudWatch Logs.
   DefaultLogGroup:
     Type: AWS::Logs::LogGroup
@@ -647,7 +633,7 @@ Resources:
             - Name: GF_DATABASE_NAME
               Value: !Ref DatabaseName
             - Name: LOAD_BALANCER_DNS
-              Value: !If [ CreateRoute53Record, !Ref LoadBalancerDomainName, !GetAtt ApplicationLoadBalancer.DNSName ]
+              Value: !GetAtt ApplicationLoadBalancer.DNSName
             - Name: GF_SECURITY_ADMIN_PASSWORD
               Value: !Ref GrafanaAdminPassword
             - Name: GF_INSTALL_PLUGINS
@@ -824,6 +810,52 @@ Resources:
       - Name: LoadBalancer
         Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
 
+  #######################################################
+  ###                                                 ###
+  ###              Cloudwatch Resources               ###
+  ###                                                 ###
+  ###    The resources declared below are part of     ###
+  ###  Cloudwatch monitoring system for the cluster.  ###
+  ###                                                 ###
+  #######################################################
+
+  # Grafana cluster Cloudwatch dashboard.
+  CloudwatchMonitoringDashboard:
+    Condition: CreateCloudWatchDashboard
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub grafana-monitoring-${AWS::StackName}
+      DashboardBody:
+        {"Fn::Join":
+          [ "",
+            [
+              '{"widgets": [
+                  {
+                    "type": "metric",
+                    "x": 0,
+                    "y": 0,
+                    "width": 12,
+                    "height": 6,
+                    "properties": {
+                        "stat": "Average",
+                        "metrics": [
+                            [ "AWS/ECS", "CPUUtilization", "ServiceName", "', !Sub "${GrafanaService.Name}",'", "ClusterName", "', !Ref FargateEcsCluster,'" ],
+                            [ "AWS/ECS", "MemoryUtilization", "ServiceName", "', !Sub "${GrafanaService.Name}",'", "ClusterName", "', !Ref FargateEcsCluster,'" ],
+                            [ "AWS/ECS", "CPUReservation", "ServiceName", "', !Sub "${GrafanaService.Name}",'", "ClusterName", "', !Ref FargateEcsCluster,'" ],
+                            [ "AWS/ECS", "MemoryReservation", "ServiceName", "', !Sub "${GrafanaService.Name}",'", "ClusterName", "', !Ref FargateEcsCluster,'" ]
+                        ],
+                        "period": 300,
+                        "region": "',!Ref 'AWS::Region','",
+                        "view": "timeSeries",
+                        "stacked": true,
+                        "title": "ECS Service CPU/Memory"
+                    }
+                  }
+                ]
+              }'
+            ]
+          ]
+        }
 
 # The outputs to be generated by this template.
 Outputs:
@@ -860,7 +892,7 @@ Outputs:
       -
         - !If [TlsEnabled, https, http]
         - ://
-        - !If [CreateRoute53Record, !Ref LoadBalancerDomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+        - !GetAtt ApplicationLoadBalancer.DNSName
   ApplicationLoadBalancerArn:
     Description: Load balancer ARN
     Value: !Ref ApplicationLoadBalancer
@@ -868,7 +900,7 @@ Outputs:
       Name: !Sub ${AWS::StackName}-ApplicationLoadBalancerArn
   ApplicationLoadBalancerDnsName:
     Description: Load balancer DNS name
-    Value: !If [CreateRoute53Record, !Ref LoadBalancerDomainName, !GetAtt ApplicationLoadBalancer.DNSName]
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
     Export:
       Name: !Sub ${AWS::StackName}-ApplicationLoadBalancerDnsName
   ApplicationLoadBalancerName:
