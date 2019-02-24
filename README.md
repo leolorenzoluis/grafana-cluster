@@ -49,7 +49,8 @@ This repository features a CloudFormation stack which creates a scalable Grafana
 
 <br />
 <p align="center">
-  <img src="assets/grafana-dashboard.png" />
+  <img width="800" src="assets/grafana-dashboard.png" />
+  <p align="center"><sub>An screenshot example of a Grafana dashboard.</sub></p>
 </p>
 <br />
 
