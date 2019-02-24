@@ -47,6 +47,13 @@ This repository features a CloudFormation stack which creates a scalable Grafana
 
 ## Deployment
 
+<br />
+<p align="center">
+  <img width="800" src="assets/grafana-dashboard.png" />
+  <p align="center"><sub>An screenshot example of a Grafana dashboard.</sub></p>
+</p>
+<br />
+
 ## Block Parameters
 
 Below is a description of the different parameters exposed by this Cloudformation stack. The parameters which do not have a default value must be explicitely specified.
