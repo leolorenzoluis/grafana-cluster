@@ -1,8 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description:  A CloudFormation template deploying a Multi-AZ Grafana cluster using Docker containers on AWS Fargate.
               Optionally, you can specify a domain name and/or an AWS Certificate Manager ARN can be passed if you want to
-              enable TLS on the ALB. If you want to create the DNS alias to the ALB, your DNS must be hosted in
-              Amazon Route 53. The stack also creates CloudWatch Alarms to monitor CPU utilization in order to determine container
+              enable TLS on the ALB. The stack also creates CloudWatch Alarms to monitor CPU utilization in order to determine container
               counts (up and down), but other metrics may be more important in your system.
 
 # Metadata associated with this stack.
@@ -55,7 +54,7 @@ Metadata:
         Parameters:
           - SessionStorageType
           - CacheNodeType
-          - ClusterSubnets
+          - CacheClusterSubnets
           - NumNodeGroups
           - ReplicasPerNodeGroup
           - AutomaticFailoverEnabled
@@ -118,7 +117,7 @@ Metadata:
         default: Session storage type
       CacheNodeType:
         default: Cache node type
-      ClusterSubnets:
+      CacheClusterSubnets:
         default: Cluster Subnets
       NumNodeGroups:
         default: Number of nodes in the cluster
@@ -157,7 +156,7 @@ Parameters:
       - db.r4.4xlarge
       - db.r4.8xlarge
   DatabaseBackupRetentionPeriod:
-    Type: String
+    Type: Number
     Default: 7
     Description: The number of days for which automated backups are retained.
     AllowedValues:
@@ -244,8 +243,8 @@ Parameters:
       - cache.r4.4xlarge
       - cache.r4.8xlarge
       - cache.r4.16xlarge
-  ClusterSubnets:
-    Description: The subnets to place cache nodes in, specify at least 2 subnets for the caching nodes.
+  CacheClusterSubnets:
+    Description: (Redis only) - The subnets to place cache nodes in, specify at least 2 subnets for the caching nodes.
     Type: List<AWS::EC2::Subnet::Id>
     MinLength: 1
   AutomaticFailoverEnabled:
@@ -302,7 +301,7 @@ Parameters:
   RedisCloudWatchDashboard:
     Type: String
     Description: (Redis only) - Whether to create a Cloudwatch monitoring dashboard associated with the created ElastiCache cluster.
-    Default: true
+    Default: false
     AllowedValues:
       - true
       - false
@@ -445,7 +444,7 @@ Resources:
         Environment: !Ref Environment
         VpcId: !Ref VpcId
         SourceSecurityGroupId: !GetAtt GrafanaSecurityGroup.GroupId
-        ClusterSubnets: !Join [",", !Ref ClusterSubnets]
+        CacheClusterSubnets: !Join [",", !Ref CacheClusterSubnets]
         CloudWatchDashboard: !Ref RedisCloudWatchDashboard
         CacheNodeType: !Ref CacheNodeType
         NumNodeGroups: !Ref NumNodeGroups
