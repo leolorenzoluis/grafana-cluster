@@ -1,9 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description:  A CloudFormation template deploying a Multi-AZ Grafana cluster on AWS Fargate.
+Description:  A CloudFormation template deploying a Multi-AZ Grafana cluster using Docker containers on AWS Fargate.
               Optionally, you can specify a domain name and/or an AWS Certificate Manager ARN can be passed if you want to
               enable TLS on the ALB. If you want to create the DNS alias to the ALB, your DNS must be hosted in
-              Amazon Route 53.
-              The stack also creates CloudWatch Alarms to monitor CPU utilization in order to determine container
+              Amazon Route 53. The stack also creates CloudWatch Alarms to monitor CPU utilization in order to determine container
               counts (up and down), but other metrics may be more important in your system.
 
 # Metadata associated with this stack.
@@ -19,9 +18,27 @@ Metadata:
         Parameters:
           - Environment
 
-      # RDS parameters label.
+      # Grafana parameters label.
       - Label:
-          default: RDS Database Configuration
+          default: Grafana parameters
+        Parameters:
+          - GrafanaAdminPassword
+          - GrafanaPlugins
+
+      # Network label.
+      - Label:
+          default: Network and Security parameters
+        Parameters:
+          - PublicSubnets
+          - PrivateSubnets
+          - VpcId
+          - SSLCertificateArn
+          - HostedZoneName
+          - LoadBalancerDomainName
+
+      # Aurora Storage parameters label.
+      - Label:
+          default: Aurora Storage Configuration
         Parameters:
           - DatabaseInstanceType
           - DatabaseBackupRetentionPeriod
@@ -33,27 +50,22 @@ Metadata:
           - PreferredBackupWindow
           - PreferredMaintenanceWindow
 
-      # Grafana parameters label.
+      # Session Storage parameters label.
       - Label:
-          default: Grafana parameters
+          default: Session Storage Database Configuration
         Parameters:
-          - GrafanaAdminPassword
-          - GrafanaPlugins
-
-      # Network label.
-      - Label:
-          default: Network and security parameters
-        Parameters:
-          - PublicSubnets
-          - PrivateSubnets
-          - VpcId
-          - SSLCertificateArn
-          - HostedZoneName
-          - LoadBalancerDomainName
+          - SessionStorageType
+          - CacheNodeType
+          - ClusterSubnets
+          - NumNodeGroups
+          - ReplicasPerNodeGroup
+          - AutomaticFailoverEnabled
+          - AtRestEncryptionEnabled
+          - TransitEncryptionEnabled
 
       # Cluster parameters label.
       - Label:
-          default: Cluster auto-scaling parameters
+          default: Cluster Auto-scaling parameters
         Parameters:
           - DefaultContainerCpu
           - DefaultContainerMemory
@@ -104,6 +116,23 @@ Metadata:
         default: Database backup window
       PreferredMaintenanceWindow:
         default: Database maintenance window
+      SessionStorageType:
+        default: Session storage type
+      CacheNodeType:
+        default: Cache node type
+      ClusterSubnets:
+        default: Cluster Subnets
+      NumNodeGroups:
+        default: Number of nodes in the cluster
+      ReplicasPerNodeGroup:
+        default: Number of replicas per node group
+      AutomaticFailoverEnabled:
+        default: Enable automatic failover
+      AtRestEncryptionEnabled:
+        default: Enable at rest encryption
+      TransitEncryptionEnabled:
+        default: Enable transit encryption
+
 
 # Parameters exposed by this template.
 Parameters:
@@ -116,11 +145,11 @@ Parameters:
     MinLength: 1
     ConstraintDescription: The environment cannot be empty.
 
-  # RDS parameters.
+  # Aurora parameters.
   DatabaseInstanceType:
     Type: String
     Default: db.r4.large
-    Description: The database instance class to associate with the RDS primary and replica instances which will be created in the database cluster.
+    Description: The database instance class to associate with the Aurora storage cluster.
     AllowedValues:
       - db.r4.large
       - db.r4.xlarge
@@ -130,7 +159,7 @@ Parameters:
   DatabaseBackupRetentionPeriod:
     Type: String
     Default: 7
-    Description: The number of days for which automated backups are retained. You must specify a minimum value of 1 day.
+    Description: The number of days for which automated backups are retained.
     AllowedValues:
       - 1
       - 7
@@ -141,7 +170,7 @@ Parameters:
   EncryptionAtRest:
     Type: String
     Default: false
-    Description: Indicates whether the DB instance should be encrypted.
+    Description: Indicates whether the Aurora database storage should be encrypted.
     AllowedValues:
       - true
       - false
@@ -180,6 +209,89 @@ Parameters:
     Default: mon:03:00-mon:04:00
     Description: The weekly time range (in UTC) during which system maintenance can occur.
     MinLength: 5
+
+  # Cache storage parameters.
+  SessionStorageType:
+    Type: String
+    Default: redis
+    Description: (Redis only) - The session storage type for Grafana (stroging Grafana sessions in a distributed Redis is highly recommended).
+    AllowedValues:
+      - redis
+      - file
+  CacheNodeType:
+    Description: (Redis only) - The cache node instance class to deploy in the cluster.
+    Type: String
+    Default: cache.t2.micro
+    AllowedValues:
+      - cache.t2.micro
+      - cache.t2.small
+      - cache.t2.medium
+      - cache.m4.large
+      - cache.m4.xlarge
+      - cache.m4.2xlarge
+      - cache.m4.4xlarge
+      - cache.m4.10xlarge
+      - cache.r4.large
+      - cache.r4.xlarge
+      - cache.r4.2xlarge
+      - cache.r4.4xlarge
+      - cache.r4.8xlarge
+      - cache.r4.16xlarge
+  ClusterSubnets:
+    Description: The subnets to place cache nodes in, specify at least 2 subnets for the caching nodes.
+    Type: List<AWS::EC2::Subnet::Id>
+    MinLength: 1
+  AutomaticFailoverEnabled:
+    Type: String
+    Default: true
+    Description: (Redis only) - Indicates whether Multi-AZ is enabled. When Multi-AZ is enabled, a read-only replica is automatically promoted to a read-write primary cluster if the existing primary cluster fails. If you specify true, you must specify a value greater than 1 for the ReplicasPerNodeGroup property.
+    AllowedValues:
+      - true
+      - false
+  NumNodeGroups:
+    Type: Number
+    Description: (Redis only) - The number of node groups (shards) for this Redis replication group.
+    Default: 1
+    AllowedValues:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+  ReplicasPerNodeGroup:
+    Type: Number
+    Description: (Redis only) - The number of replica nodes in each node group (shard).
+    Default: 2
+    AllowedValues:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+  AtRestEncryptionEnabled:
+    Type: String
+    Default: false
+    Description: (Redis only) - Indicates whether to enable encryption at rest on the ElastiCache cluster.
+    AllowedValues:
+      - true
+      - false
+  TransitEncryptionEnabled:
+    Type: String
+    Default: false
+    Description: (Redis only) - Indicates whether to enable in-transit encryption on the ElastiCache cluster.
+    AllowedValues:
+      - true
+      - false
 
   # Network and security parameters.
   PublicSubnets:
@@ -294,6 +406,7 @@ Parameters:
 # Conditions declared in this template.
 Conditions:
   TlsEnabled: !Not [ !Equals [ !Ref SSLCertificateArn, "" ]]
+  UseRedisStorage: !Equals [ !Ref SessionStorageType, redis]
   CreateRoute53Record: !And
     - !Not [ !Equals [ !Ref LoadBalancerDomainName, "" ]]
     - !Not [ !Equals [ !Ref HostedZoneName, "" ]]
@@ -322,6 +435,26 @@ Resources:
         DatabaseBackupRetentionPeriod: !Ref DatabaseBackupRetentionPeriod
         PreferredBackupWindow: !Ref PreferredBackupWindow
         PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
+
+  # Implementation of a Redis Cluster on
+  # the AWS cloud to persist session storage.
+  RedisStorageStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: UseRedisStorage
+    Properties:
+      TemplateURL: node_modules/@aws-blocks/elasticache-cluster/cloudformation.yml
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !Ref VpcId
+        SourceSecurityGroupId: !GetAtt GrafanaSecurityGroup.GroupId
+        ClusterSubnets: !Join [",", !Ref ClusterSubnets]
+        CloudWatchDashboard: true
+        CacheNodeType: !Ref CacheNodeType
+        NumNodeGroups: !Ref NumNodeGroups
+        ReplicasPerNodeGroup: !Ref ReplicasPerNodeGroup
+        AutomaticFailoverEnabled: !Ref AutomaticFailoverEnabled
+        AtRestEncryptionEnabled: !Ref AtRestEncryptionEnabled
+        TransitEncryptionEnabled: !Ref TransitEncryptionEnabled
 
   ##################################################
   ###                                            ###
@@ -520,7 +653,12 @@ Resources:
             - Name: GF_INSTALL_PLUGINS
               Value: !Ref GrafanaPlugins
             - Name: GF_SESSION_PROVIDER
-              Value: file
+              Value: !Ref SessionStorageType
+            - !If
+              - UseRedisStorage
+              - Name: GF_SESSION_PROVIDER_CONFIG
+                Value: !Sub addr=${RedisStorageStack.Outputs.ClusterAddress}:${RedisStorageStack.Outputs.ClusterPort},pool_size=100,prefix=grafana
+              - !Ref "AWS::NoValue"
           LogConfiguration:
             LogDriver: awslogs
             Options:

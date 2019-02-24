@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/HQarroum/grafana-cluster#readme",
   "dependencies": {
-    "@aws-blocks/aurora-cluster": "^1.0.0"
+    "@aws-blocks/aurora-cluster": "^1.0.1",
+    "@aws-blocks/elasticache-cluster": "^1.0.1"
   }
 }
