@@ -22,6 +22,7 @@ Lead Maintainer: [Halim Qarroum](mailto:hqm.post@gmail.com)
  - [Deployment](#deployment)
  - [Block Parameters](#block-parameters)
  - [Block Outputs](#block-outputs)
+ - [CloudWatch Integration](#cloudwatch-integration)
  - [See also](#see-also)
 
 ## Install
@@ -44,6 +45,8 @@ The stack will be available into the `node_modules/@aws-blocks` directory.
 ## Description
 
 This repository features a CloudFormation stack which creates a scalable Grafana cluster using Docker containers on AWS Fargate. You can either deploy it as a standalone stack using the AWS console or the AWS CLI, or integrate it as a sub-stack as part of your own deployment.
+
+This stack makes use of a Multi-AZ Aurora cluster as a database storage for Grafana, as well as an optional Redis cluster (enabled by default and the recommended method) to store sessions across multiple Grafana nodes. As such, this Grafana deployment aims to be highly-available as well as being auto-scalable given the load of the application.
 
 ## Deployment
 
@@ -137,6 +140,15 @@ Output variable | Description
 **ApplicationLoadBalancerListenerArn** | Load balancer listener ARN
 **LoadBalancerAlarmTopicArn** | Load balancer alarm topic ARN
 **LoadBalancerAlarmTopicName** | Load balancer alarm topic name
+
+## CloudWatch Integration
+
+This implementation can optionally create a CloudWatch dashboard displaying the metrics associated with the Grafana cluster you have deployed. Below is an example of how such a dashboard looks like, and it is a great way to always have a nice view of how your cluster is performing.
+
+<br />
+<p align="center">
+  <img src="assets/dashboard.png" />
+</p>
 
 ## See also
 
