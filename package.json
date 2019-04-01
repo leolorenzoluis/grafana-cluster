@@ -1,6 +1,6 @@
 {
   "name": "@aws-blocks/grafana-cluster",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Scalable Grafana cluster using AWS Fargate as a CloudFormation stack.",
   "main": "index.js",
   "scripts": {

@@ -1,0 +1,7 @@
+language: ruby
+install:
+  - pip install cfn-lint --user --ignore-installed six
+  - gem install cfn-nag
+script:
+  - cfn-lint -t cloudformation.yml
+  - cfn_nag_scan --input-path cloudformation.yml

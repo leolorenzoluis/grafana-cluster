@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description:  A CloudFormation template deploying a Multi-AZ Grafana cluster using Docker containers on AWS Fargate.
               Optionally, you can specify a domain name and/or an AWS Certificate Manager ARN can be passed if you want to
               enable TLS on the ALB. The stack also creates CloudWatch Alarms to monitor CPU utilization in order to determine container
-              counts (up and down), but other metrics may be more important in your system.
+              counts (up and down).
 
 # Metadata associated with this stack.
 Metadata:
@@ -16,11 +16,6 @@ Metadata:
           default: General
         Parameters:
           - Environment
-
-      # Grafana parameters label.
-      - Label:
-          default: Grafana parameters
-        Parameters:
           - GrafanaAdminPassword
           - GrafanaPlugins
 
@@ -143,6 +138,17 @@ Parameters:
     Default: development
     MinLength: 1
     ConstraintDescription: The environment cannot be empty.
+  GrafanaAdminPassword:
+    Type: String
+    NoEcho: true
+    Description: The Grafana admin password to configure for the user 'admin' (must have at least 6 characters and at maximum 41 characters).
+    MinLength: 6
+    MaxLength: 41
+    ConstraintDescription: Password must have at least 6 characters and at maximum 41 characters.
+  GrafanaPlugins:
+    Type: String
+    Description: A comma-delimited list of Grafana plugins to provision on the Grafana hosts. You can add or remove plugins from this list to match your deployment requirements.
+    Default: "grafana-clock-panel,vonage-status-panel,grafana-piechart-panel,neocat-cal-heatmap-panel"
 
   # Aurora parameters.
   DatabaseInstanceType:
@@ -325,19 +331,6 @@ Parameters:
     Description: (Optional) - An ARN associated with a TLS certificate to use from Amazon Certificate Manager (ACM). If provided, access to the Grafana cluster will be available through the HTTPS port (443) through the internet facing load balancer, if not provided, access to the Grafana will be over HTTP (80).
     Default: ""
 
-  # Grafana parameters.
-  GrafanaAdminPassword:
-    Type: String
-    NoEcho: true
-    Description: The Grafana admin password to configure for the user 'admin' (must have at least 6 characters and at maximum 41 characters).
-    MinLength: 6
-    MaxLength: 41
-    ConstraintDescription: Password must have at least 6 characters and at maximum 41 characters.
-  GrafanaPlugins:
-    Type: String
-    Description: A comma-delimited list of Grafana plugins to provision on the Grafana hosts. You can add or remove plugins from this list to match your deployment requirements.
-    Default: "grafana-clock-panel,vonage-status-panel,grafana-piechart-panel,neocat-cal-heatmap-panel"
-
   # Auto-scaling parameters.
   DefaultContainerCpu:
     Type: Number
@@ -479,7 +472,7 @@ Resources:
     Properties:
       Description: Ingress rule from the load balancer security group.
       GroupId: !Ref GrafanaSecurityGroup
-      IpProtocol: -1
+      IpProtocol: "-1"
       SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
 
   # Ingress rule from other containers in the same security group.
@@ -488,7 +481,7 @@ Resources:
     Properties:
       Description: Ingress rule from other containers in the same security group.
       GroupId: !Ref GrafanaSecurityGroup
-      IpProtocol: -1
+      IpProtocol: "-1"
       SourceSecurityGroupId: !Ref GrafanaSecurityGroup
 
   # The application load balancer security group.
@@ -560,7 +553,7 @@ Resources:
       UnhealthyThresholdCount: 5
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
-          Value: 300
+          Value: "300"
       TargetType: ip
       Tags:
         - Key: Stack
@@ -713,9 +706,6 @@ Resources:
       RoleARN: !GetAtt GrafanaAutoScalingRole.Arn
       ScalableDimension: ecs:service:DesiredCount
       ServiceNamespace: ecs
-    DependsOn:
-      - GrafanaService
-      - FargateEcsCluster
 
   # The application scale-out policy.
   GrafanaScaleOutPolicy:
